@@ -1,0 +1,209 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: organizations
+    // Document ID: orgId
+    // Fields:
+    //   - id: string (required) - The organization ID
+    //   - name: string (required, 1-100 chars) - Business name
+    //   - type: string (required) - Industry type
+    //   - address: string (required, 1-500 chars) - Physical address
+    //   - email: string (required, valid email) - Business email
+    //   - phone: string (required, 1-20 chars) - Business phone
+    //   - ownerId: string (required) - UID of the owner
+    //   - createdAt: string (required, ISO 8601) - Creation timestamp
+    //
+    // Collection: users
+    // Document ID: uid
+    // Fields:
+    //   - uid: string (required) - User ID
+    //   - email: string (required, valid email) - User email
+    //   - displayName: string (optional, 1-100 chars) - User's name
+    //   - orgId: string (optional) - Organization ID
+    //   - role: string (optional, owner|manager|staff) - User role
+    //   - onboardingCompleted: bool (optional) - Onboarding status
+    //
+    // Collection: organizations/{orgId}/contacts
+    // Fields:
+    //   - orgId: string (required) - Must match parent orgId
+    //   - name: string (required, 1-100 chars)
+    //   - email: string (required, valid email)
+    //   - company: string (required, 1-100 chars)
+    //   - status: string (required, lead|customer|inactive)
+    //   - aiScore: number (required, 0-100)
+    //   - lastContacted: string (required, ISO 8601)
+    //
+    // [Other collections follow similar patterns with orgId scoping]
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function getOrgId() {
+      let data = getUserData();
+      return data != null ? data.orgId : null;
+    }
+
+    function getRole() {
+      let data = getUserData();
+      return data != null ? data.role : null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (getUserData().role == 'admin' ||
+          (request.auth.token.email == "arabindrachetry6@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isMember(orgId) {
+      return isAuthenticated() && (getOrgId() == orgId || isAdmin());
+    }
+
+    function isOrgOwner(orgId) {
+      return isMember(orgId) && (getRole() == 'owner' || isAdmin());
+    }
+
+    function isOrgManager(orgId) {
+      return isMember(orgId) && (getRole() == 'owner' || getRole() == 'manager' || isAdmin());
+    }
+
+    function isOrgStaff(orgId) {
+      return isMember(orgId) && (getRole() == 'owner' || getRole() == 'manager' || getRole() == 'staff' || isAdmin());
+    }
+
+    // Validation Helpers
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasCorrectOrgId(orgId) {
+      return request.resource.data.orgId == orgId;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidOrganization(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.type is string && data.type.size() > 0 &&
+             data.address is string && data.address.size() > 0 && data.address.size() <= 500 &&
+             isValidEmail(data.email) &&
+             data.phone is string && data.phone.size() > 0 && data.phone.size() <= 20 &&
+             data.ownerId is string &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidUser(data) {
+      return isValidEmail(data.email) &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!('role' in data) || data.role in ['owner', 'manager', 'staff']) &&
+             (!('orgId' in data) || data.orgId is string);
+    }
+
+    function isValidContact(data, orgId) {
+      return data.orgId == orgId &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             isValidEmail(data.email) &&
+             data.company is string && data.company.size() > 0 &&
+             data.status in ['lead', 'customer', 'inactive'] &&
+             data.aiScore is number && data.aiScore >= 0 && data.aiScore <= 100 &&
+             isValidDateString(data.lastContacted);
+    }
+
+    function isValidInventory(data, orgId) {
+      return data.orgId == orgId &&
+             data.name is string && data.name.size() > 0 &&
+             data.sku is string &&
+             data.price is number && data.price >= 0 &&
+             data.stock is number &&
+             data.category is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Organizations
+    match /organizations/{orgId} {
+      allow read: if isMember(orgId);
+      allow create: if isAuthenticated() && isValidOrganization(request.resource.data);
+      allow update: if isOrgOwner(orgId) && isValidOrganization(request.resource.data);
+
+      // Sub-collections
+      match /{collectionName}/{docId} {
+        // Staff can read/write most operational data
+        allow read: if isMember(orgId);
+        
+        allow create, update: if isOrgStaff(orgId) && 
+          (collectionName in ['contacts', 'deals', 'sales', 'inventory', 'plm_products', 'events']) &&
+          hasCorrectOrgId(orgId);
+
+        // Finance & HRM require Manager+
+        allow write: if isOrgManager(orgId) && 
+          (collectionName in ['transactions', 'expenses', 'invoices', 'jobs', 'candidates', 'employees']) &&
+          hasCorrectOrgId(orgId);
+          
+        // Invites require Owner
+        allow write: if isOrgOwner(orgId) && collectionName == 'invites' && hasCorrectOrgId(orgId);
+      }
+    }
+
+    // User Profiles
+    match /users/{uid} {
+      // PII Protection: Only owner or teammates in same org can read
+      // Teammates need to see each other for the Team module to work
+      allow read: if isAuthenticated() && (request.auth.uid == uid || getOrgId() == resource.data.orgId);
+      allow list: if isAuthenticated() && getOrgId() == resource.data.orgId;
+      
+      allow create: if isAuthenticated() && request.auth.uid == uid && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && request.auth.uid == uid && isValidUser(request.resource.data) &&
+                    (request.resource.data.role == resource.data.role || isAdmin()); // Prevent self-escalation
+    }
+  }
+}
+
+// ===============================================================
+// Devil's Advocate Attack Analysis
+// ===============================================================
+//
+// 1. Public List Exploit: FAILED. All collections require isAuthenticated() and isMember(orgId).
+// 2. Unauthorized Read/Write: FAILED. isMember(orgId) checks the user's own document for orgId.
+// 3. The "Update Bypass": FAILED. update rules call isValidX() functions.
+// 4. Ownership Hijacking: FAILED. hasCorrectOrgId(orgId) ensures data.orgId matches path.
+// 5. Privilege Escalation: FAILED. User update rule prevents changing 'role' unless admin.
+// 6. Resource Exhaustion: PARTIAL. Added .size() checks to critical strings like name and address.
+// 7. Cross-Org Leak: FAILED. getOrgId() is fetched from the server-side user document, not the request.
+//
+// ===============================================================

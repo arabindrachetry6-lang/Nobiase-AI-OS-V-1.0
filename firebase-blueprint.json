@@ -1,0 +1,200 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user settings, language preferences, and theme.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "language": { "type": "string", "enum": ["en", "hi", "bn", "ne", "de"] },
+        "theme": { "type": "string", "enum": ["light", "dark"] },
+        "orgId": { "type": "string" },
+        "role": { "type": "string", "enum": ["owner", "manager", "staff"] },
+        "onboardingCompleted": { "type": "boolean" },
+        "apiKeys": { "type": "object" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Organization": {
+      "title": "Organization",
+      "description": "Tenant organization details.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "address": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Contact": {
+      "title": "CRM Contact",
+      "description": "Customer and lead information.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "company": { "type": "string" },
+        "status": { "type": "string", "enum": ["lead", "customer", "inactive"] },
+        "aiScore": { "type": "number" },
+        "lastContacted": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Deal": {
+      "title": "Sales Deal",
+      "description": "Pipeline deal information.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "title": { "type": "string" },
+        "value": { "type": "number" },
+        "stage": { "type": "string", "enum": ["prospecting", "negotiation", "closed-won", "closed-lost"] },
+        "contactId": { "type": "string" }
+      }
+    },
+    "Product": {
+      "title": "Inventory Product",
+      "description": "Product details and stock levels.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "name": { "type": "string" },
+        "sku": { "type": "string" },
+        "price": { "type": "number" },
+        "stock": { "type": "number" },
+        "lowStockThreshold": { "type": "number" },
+        "category": { "type": "string" },
+        "lifecycleStage": { "type": "string", "enum": ["idea", "launch", "active", "retire"] }
+      }
+    },
+    "Transaction": {
+      "title": "POS Transaction",
+      "description": "Sales records from POS.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "amount": { "type": "number" },
+        "items": { "type": "array" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "paymentMethod": { "type": "string" }
+      }
+    },
+    "Expense": {
+      "title": "Expense Record",
+      "description": "Tracked business expenses.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "receiptUrl": { "type": "string" }
+      }
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Client invoices.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "amount": { "type": "number" },
+        "dueDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["pending", "paid", "overdue"] }
+      }
+    },
+    "Job": {
+      "title": "Job Posting",
+      "description": "Recruitment job openings.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "department": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "closed", "draft"] },
+        "postedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Candidate": {
+      "title": "Job Candidate",
+      "description": "Applicants for job postings.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "status": { "type": "string", "enum": ["applied", "screening", "interview", "offered", "hired"] },
+        "resumeUrl": { "type": "string" },
+        "fitScore": { "type": "number" },
+        "aiAnalysis": { "type": "object" }
+      }
+    },
+    "Employee": {
+      "title": "Employee",
+      "description": "Company staff records.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "department": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "on-leave", "terminated"] },
+        "salary": { "type": "number" },
+        "joinDate": { "type": "string", "format": "date" },
+        "performanceSummary": { "type": "string" },
+        "retentionRisk": { "type": "string" }
+      }
+    },
+    "Invite": {
+      "title": "Invite",
+      "description": "Organization invites.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["owner", "manager", "staff"] },
+        "orgId": { "type": "string" },
+        "invitedBy": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "expired"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "UserProfile", "description": "User profiles" },
+    "/organizations/{orgId}": { "schema": "Organization", "description": "Organization details" },
+    "/organizations/{orgId}/contacts": { "schema": "Contact", "description": "CRM contacts" },
+    "/organizations/{orgId}/deals": { "schema": "Deal", "description": "Sales deals" },
+    "/organizations/{orgId}/inventory": { "schema": "Product", "description": "Inventory products" },
+    "/organizations/{orgId}/plm_products": { "schema": "Product", "description": "Product lifecycle management projects" },
+    "/organizations/{orgId}/transactions": { "schema": "Transaction", "description": "POS transactions" },
+    "/organizations/{orgId}/expenses": { "schema": "Expense", "description": "Business expenses" },
+    "/organizations/{orgId}/invoices": { "schema": "Invoice", "description": "Client invoices" },
+    "/organizations/{orgId}/jobs": { "schema": "Job", "description": "Recruitment jobs" },
+    "/organizations/{orgId}/candidates": { "schema": "Candidate", "description": "Job applicants" },
+    "/organizations/{orgId}/employees": { "schema": "Employee", "description": "Company employees" },
+    "/organizations/{orgId}/invites": { "schema": "Invite", "description": "Organization invites" }
+  }
+}

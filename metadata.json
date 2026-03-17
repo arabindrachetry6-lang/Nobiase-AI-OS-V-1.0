@@ -1,0 +1,9 @@
+{
+  "name": "Nobiase AI OS",
+  "description": "A complete AI-powered operating system for small and medium businesses, featuring CRM, POS, Finance, Inventory, and HRM tools.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
